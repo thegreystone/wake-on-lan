@@ -21,10 +21,11 @@ $ErrorActionPreference = "Stop"
 $Repo   = "thegreystone/wake-on-lan"
 $Target = "wol.exe"
 
-$Arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+$Arch = $env:PROCESSOR_ARCHITEW6432
+if (-not $Arch) { $Arch = $env:PROCESSOR_ARCHITECTURE }
 $Suffix = switch ($Arch) {
-    "X64"   { "windows-x86_64" }
-    "Arm64" { "windows-arm64"  }
+    "AMD64" { "windows-x86_64" }
+    "ARM64" { "windows-arm64"  }
     default {
         Write-Error "No pre-built binary for Windows/$Arch — please build from source: build.bat"
         exit 1
