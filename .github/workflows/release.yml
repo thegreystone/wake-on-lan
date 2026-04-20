@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            suffix: linux-x86_64
+            static: true
+          - os: ubuntu-24.04-arm
+            suffix: linux-aarch64
+            static: true
+          - os: macos-latest
+            suffix: macos-aarch64
+            static: false
+          - os: windows-latest
+            suffix: windows-x86_64
+            static: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          CFLAGS="-O2 -Wall -Wextra -DVERSION=\"$VERSION\""
+          if [ "${{ matrix.static }}" = "true" ]; then
+            CFLAGS="$CFLAGS -static"
+          fi
+          cc $CFLAGS -o wol wol.c
+          mv wol wol-${VERSION}-${{ matrix.suffix }}
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call build.bat
+          move wol.exe wol-%GITHUB_REF_NAME%-${{ matrix.suffix }}.exe
+
+      - name: Smoke test (Unix)
+        if: runner.os != 'Windows'
+        run: ./wol-${GITHUB_REF_NAME}-${{ matrix.suffix }} --version
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: wol-%GITHUB_REF_NAME%-${{ matrix.suffix }}.exe --version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: wol-${{ matrix.suffix }}
+          path: |
+            wol-*-${{ matrix.suffix }}
+            wol-*-${{ matrix.suffix }}.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*
