@@ -1,8 +1,37 @@
 # wake-on-lan
 
+[![Build](https://github.com/thegreystone/wake-on-lan/actions/workflows/build.yml/badge.svg)](https://github.com/thegreystone/wake-on-lan/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/thegreystone/wake-on-lan)](https://github.com/thegreystone/wake-on-lan/releases/latest)
+
 Minimal Wake-on-LAN tool. Sends a magic packet over UDP to wake a machine by its MAC address.
 
-## Build
+## Install pre-built binary
+
+Pre-built binaries are available for Linux x86_64/aarch64, macOS aarch64/x86_64, and Windows x86_64/arm64.
+
+**macOS / Linux**
+```sh
+curl -fsSL https://raw.githubusercontent.com/thegreystone/wake-on-lan/main/install.sh | sh
+```
+
+Installs the latest release to `/usr/local/bin`. To install a specific version or a different directory:
+```sh
+./install.sh v1.0.0
+./install.sh v1.0.0 --dir ~/.local/bin
+```
+
+**Windows** (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/thegreystone/wake-on-lan/main/install.ps1 | iex
+```
+
+Installs to `%LOCALAPPDATA%\Programs\wol` and adds it to the user `PATH`. To install a specific version or a different directory:
+```powershell
+.\install.ps1 -Version v1.0.0
+.\install.ps1 -Version v1.0.0 -Dir C:\Tools
+```
+
+## Build from source
 
 **macOS / Linux**
 ```sh

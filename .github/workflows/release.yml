@@ -22,8 +22,14 @@ jobs:
           - os: macos-latest
             suffix: macos-aarch64
             static: false
+          - os: macos-13
+            suffix: macos-x86_64
+            static: false
           - os: windows-latest
             suffix: windows-x86_64
+            static: false
+          - os: windows-11-arm
+            suffix: windows-arm64
             static: false
     runs-on: ${{ matrix.os }}
     steps:
