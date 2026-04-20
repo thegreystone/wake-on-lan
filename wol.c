@@ -35,6 +35,7 @@
 #	include <ws2tcpip.h>
 #	pragma comment(lib, "ws2_32.lib")
 #	define CLOSE(s) closesocket(s)
+#	define PATH_SEP "\\"
 typedef int socklen_t;
 typedef SOCKET sock_t;
 #else
@@ -44,10 +45,13 @@ typedef SOCKET sock_t;
 #	include <unistd.h>
 #	define CLOSE(s) close(s)
 #	define INVALID_SOCKET (-1)
+#	define PATH_SEP "/"
 typedef int sock_t;
 #endif
 
 #define PACKET_LEN 102
+#define WOL_FILE   ".wol"
+#define MAX_LINE   256
 
 static int parse_mac(const char *mac, unsigned char out[6]) {
 	char hex[13];
@@ -64,26 +68,97 @@ static int parse_mac(const char *mac, unsigned char out[6]) {
 	return 0;
 }
 
+static const char *get_home_dir(void) {
+#ifdef _WIN32
+	const char *home = getenv("USERPROFILE");
+	if (!home) home = getenv("HOMEPATH");
+	return home;
+#else
+	return getenv("HOME");
+#endif
+}
+
+/*
+ * Looks up 'name' in ~/.wol. File format (one entry per line):
+ *   alias  MAC [broadcast-address [port]]
+ * Lines starting with '#' and blank lines are ignored.
+ * Returns 0 on match, filling mac_out (required), broadcast_out and
+ * *port_out only when present in the file (caller supplies defaults).
+ */
+static int find_alias(const char *name, char *mac_out, char *broadcast_out, int *port_out) {
+	const char *home = get_home_dir();
+	if (!home) return -1;
+
+	char path[512];
+	snprintf(path, sizeof(path), "%s" PATH_SEP "%s", home, WOL_FILE);
+
+	FILE *f = fopen(path, "r");
+	if (!f) return -1;
+
+	char line[MAX_LINE];
+	int found = -1;
+	while (fgets(line, sizeof(line), f)) {
+		char *p = line;
+		while (*p == ' ' || *p == '\t') p++;
+		if (*p == '#' || *p == '\n' || *p == '\r' || *p == '\0') continue;
+
+		char alias[64], mac[32], broadcast[32];
+		int  port = -1;
+		int  n    = sscanf(p, "%63s %31s %31s %d", alias, mac, broadcast, &port);
+		if (n < 2) continue;
+
+		if (strcmp(alias, name) == 0) {
+			strcpy(mac_out, mac);
+			if (n >= 3) strcpy(broadcast_out, broadcast);
+			if (n >= 4) *port_out = port;
+			found = 0;
+			break;
+		}
+	}
+	fclose(f);
+	return found;
+}
+
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
-		fprintf(stderr, "Usage: wol <MAC> [broadcast-address] [port]\n");
+		fprintf(stderr, "Usage: wol <MAC|alias> [broadcast-address] [port]\n");
 		fprintf(stderr, "  MAC               AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF\n");
+		fprintf(stderr, "  alias             name defined in ~/.wol\n");
 		fprintf(stderr, "  broadcast-address IPv4 broadcast address (default: 255.255.255.255)\n");
 		fprintf(stderr, "                    Use subnet-directed broadcast (e.g. 192.168.1.255)\n");
 		fprintf(stderr, "                    if your router blocks 255.255.255.255 across VLANs.\n");
 		fprintf(stderr, "  port              UDP port (default: 9)\n");
 		fprintf(stderr, "Example: wol AA:BB:CC:DD:EE:FF 192.168.1.255 9\n");
+		fprintf(stderr, "Example: wol macmini\n");
+		fprintf(stderr, "\n~/.wol format:  alias  MAC [broadcast-address [port]]\n");
 		return 1;
 	}
+
+	char alias_mac[32]       = {0};
+	char alias_broadcast[32] = {0};
+	int  alias_port          = -1;
+
 	const char *mac       = argv[1];
-	const char *broadcast = argc > 2 ? argv[2] : "255.255.255.255";
-	int         port      = argc > 3 ? atoi(argv[3]) : 9;
+	const char *broadcast = "255.255.255.255";
+	int         port      = 9;
 
 	unsigned char macb[6];
 	if (parse_mac(mac, macb) < 0) {
-		fprintf(stderr, "Invalid MAC address: %s\n", mac);
-		return 2;
+		if (find_alias(argv[1], alias_mac, alias_broadcast, &alias_port) < 0) {
+			fprintf(stderr, "Invalid MAC address and no alias '%s' found in ~/%s\n", argv[1], WOL_FILE);
+			return 2;
+		}
+		mac = alias_mac;
+		if (alias_broadcast[0]) broadcast = alias_broadcast;
+		if (alias_port > 0)     port      = alias_port;
+		if (parse_mac(mac, macb) < 0) {
+			fprintf(stderr, "Invalid MAC address in alias '%s': %s\n", argv[1], mac);
+			return 2;
+		}
 	}
+
+	if (argc > 2) broadcast = argv[2];
+	if (argc > 3) port      = atoi(argv[3]);
 
 	unsigned char packet[PACKET_LEN];
 	memset(packet, 0xFF, 6);
