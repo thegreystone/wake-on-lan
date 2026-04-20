@@ -1,0 +1,5 @@
+wol
+wol.exe
+*.o
+*.obj
+*.pdb
