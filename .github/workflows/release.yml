@@ -22,7 +22,7 @@ jobs:
           - os: macos-latest
             suffix: macos-aarch64
             static: false
-          - os: macos-13
+          - os: macos-15-intel
             suffix: macos-x86_64
             static: false
           - os: windows-latest
