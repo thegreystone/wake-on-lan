@@ -30,6 +30,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef VERSION
+#	define VERSION "dev"
+#endif
+
 #ifdef _WIN32
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
@@ -120,6 +124,11 @@ static int find_alias(const char *name, char *mac_out, char *broadcast_out, int 
 }
 
 int main(int argc, char *argv[]) {
+	if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)) {
+		printf("wol %s\n", VERSION);
+		return 0;
+	}
+
 	if (argc < 2) {
 		fprintf(stderr, "Usage: wol <MAC|alias> [broadcast-address] [port]\n");
 		fprintf(stderr, "  MAC               AA:BB:CC:DD:EE:FF or AA-BB-CC-DD-EE-FF\n");

@@ -4,6 +4,8 @@ set -e
 CC=${CC:-cc}
 CFLAGS="-O2 -Wall -Wextra"
 TARGET=wol
+VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
+CFLAGS="$CFLAGS -DVERSION=\"$VERSION\""
 
 usage() {
     echo "Usage: $0 [--static] [--install]"

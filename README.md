@@ -27,6 +27,21 @@ You can also use `make` on macOS/Linux.
 sudo ./build.sh --install   # installs to /usr/local/bin
 ```
 
+## Version
+
+The binary embeds the version derived from `git describe --tags --always` at build time.
+
+```sh
+wol --version   # or: wol -V
+```
+
+To cut a release, tag and push:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## Usage
 
 ```
