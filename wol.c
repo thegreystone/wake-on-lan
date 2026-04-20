@@ -36,12 +36,15 @@
 #	pragma comment(lib, "ws2_32.lib")
 #	define CLOSE(s) closesocket(s)
 typedef int socklen_t;
+typedef SOCKET sock_t;
 #else
 #	include <arpa/inet.h>
 #	include <netinet/in.h>
 #	include <sys/socket.h>
 #	include <unistd.h>
 #	define CLOSE(s) close(s)
+#	define INVALID_SOCKET (-1)
+typedef int sock_t;
 #endif
 
 #define PACKET_LEN 102
@@ -92,8 +95,8 @@ int main(int argc, char *argv[]) {
 	WSAStartup(MAKEWORD(2, 2), &wsa);
 #endif
 
-	int sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if (sock < 0) { perror("socket"); return 3; }
+	sock_t sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock == INVALID_SOCKET) { perror("socket"); return 3; }
 
 	int one = 1;
 	setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char *) &one, sizeof(one));
